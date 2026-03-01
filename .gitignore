@@ -1,0 +1,12 @@
+﻿__pycache__/
+*.pyc
+*.pyo
+*.db
+outputs/*.csv
+docs/*.png
+docs/*.pdf
+.env
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
