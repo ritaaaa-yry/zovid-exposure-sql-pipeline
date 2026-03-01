@@ -1,0 +1,6 @@
+﻿Asset placeholders created for repo structure.
+Replace these files with real images/PDF before publishing:
+- docs/erd.png
+- docs/runtime_benchmark.png
+- docs/architecture.png
+- docs/slides.pdf
