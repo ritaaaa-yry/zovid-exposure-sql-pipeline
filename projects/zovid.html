@@ -1,0 +1,158 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zovid Exposure Risk Pipeline</title>
+  <style>
+    :root {
+      --bg: #f8f5ef;
+      --fg: #1b1f23;
+      --accent: #0f766e;
+      --accent-2: #b45309;
+      --card: #ffffff;
+      --muted: #5f6b7a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      color: var(--fg);
+      background: radial-gradient(circle at 15% 20%, #fff5e8 0%, var(--bg) 45%, #eef7f5 100%);
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 2rem; margin: 0 0 8px; }
+    p { line-height: 1.6; }
+    .muted { color: var(--muted); }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+    .metric {
+      background: var(--card);
+      border: 1px solid #e7e1d5;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
+    }
+    .metric b { display: block; font-size: 1.5rem; color: var(--accent); }
+    section {
+      background: var(--card);
+      border: 1px solid #e7e1d5;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 14px 0;
+    }
+    img {
+      width: 100%;
+      height: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      margin-top: 10px;
+      background: #fff;
+    }
+    pre {
+      overflow-x: auto;
+      background: #111827;
+      color: #e5e7eb;
+      padding: 12px;
+      border-radius: 10px;
+    }
+    .btn {
+      display: inline-block;
+      margin-top: 8px;
+      text-decoration: none;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .highlight { color: var(--accent-2); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Zovid Exposure Risk Pipeline (SQL + Simulation)</h1>
+    <p class="muted">Reusable data system for exposure-risk prioritization, not just a one-off SQL assignment.</p>
+
+    <section>
+      <h2>Problem Context</h2>
+      <p>Enrangel city is experiencing a Zovid-12 outbreak. The goal is to prioritize limited hospital and intervention resources by identifying the Top 5% highest exposure-risk residents.</p>
+    </section>
+
+    <div class="metrics">
+      <div class="metric"><b>12,378</b>Residents</div>
+      <div class="metric"><b>70,000+</b>Raw Records</div>
+      <div class="metric"><b>10+</b>Relational Tables</div>
+      <div class="metric"><b>0.061s -> 0.051s</b>SQLite Demo Runtime</div>
+      <div class="metric"><b>40s -> 8s</b>MySQL Production Target</div>
+      <div class="metric"><b>Top 5%</b>Alert List</div>
+    </div>
+
+    <section>
+      <h2>System Architecture</h2>
+      <p><span class="highlight">Data Layer (MySQL)</span> -> <span class="highlight">Feature Engineering Layer (CTE + Window + Views)</span> -> <span class="highlight">Risk Modeling Layer (Propagation Simulation)</span> -> <span class="highlight">Decision Layer (Top 5% Alert Generation)</span></p>
+      <p class="muted">Designed with modular SQL layers to enable independent benchmarking and future feature extension.</p>
+      <img src="../docs/architecture.png" alt="Project architecture diagram">
+    </section>
+
+    <section>
+      <h2>ER Diagram</h2>
+      <p>Normalized schema (3NF), PK/FK constraints enforced. Index strategy is applied on high-frequency join columns.</p>
+      <img src="../docs/erd.png" alt="ER diagram">
+    </section>
+
+    <section>
+      <h2>Feature Engineering Pipeline (MySQL 8)</h2>
+      <p>Example: selecting the latest exam record per resident using window functions as one step in production feature generation.</p>
+<pre><code>WITH ranked_exam AS (
+  SELECT resident_id,
+         exam_date,
+         ROW_NUMBER() OVER (PARTITION BY resident_id ORDER BY exam_date DESC) AS rn
+  FROM patients_physical_exam
+)
+SELECT *
+FROM ranked_exam
+WHERE rn = 1;</code></pre>
+    </section>
+
+    <section>
+      <h2>Optimization Strategy</h2>
+      <p><b>Demo Environment (SQLite):</b> sample-data benchmark improved from <b>0.061s</b> to <b>0.051s</b> (5-run average, <b>16.1%</b>).</p>
+      <p><b>Production-scale Benchmark (MySQL):</b> full-dataset aggregation target <b>40s -> 8s</b>.</p>
+      <p>Optimization methods: composite indexes, query refactor with pre-aggregation CTE, and reusable view layer.</p>
+      <img src="../docs/runtime_benchmark.png" alt="Runtime benchmark chart">
+    </section>
+
+    <section>
+      <h2>Data Flow Interface</h2>
+      <p><span class="highlight">resident_features</span> serves as the interface table between the SQL feature pipeline and Python simulation/alert modules.</p>
+    </section>
+
+    <section>
+      <h2>Reproducibility</h2>
+<pre><code>mysql &lt; sql/00_schema.sql
+mysql &lt; sql/01_feature_engineering.sql
+mysql &lt; sql/03_index_optimization.sql
+
+python python/simulate_spread.py --engine mysql
+python python/generate_alert.py --engine mysql</code></pre>
+    </section>
+
+    <section>
+      <h2>Output Preview</h2>
+<pre><code>alert_top5.csv
+resident_id,exposure_time,risk_score,rank,full_name,city,is_positive,policy_level,alert_label
+19124199803114860,0.0,76.91,1,Linda Kunkel,Stalber,1,3,TOP_5_PERCENT_ALERT</code></pre>
+    </section>
+
+    <section>
+      <h2>GitHub</h2>
+      <a class="btn" href="https://github.com/your-username/zovid-exposure-sql-pipeline" target="_blank" rel="noreferrer">View on GitHub</a>
+    </section>
+  </div>
+</body>
+</html>
